@@ -16,5 +16,6 @@ Pressione CTRL+C para parar o servidor.
  * Restarting with watchdog (inotify)
  * Debugger is active!
  * Debugger PIN: 272-562-854
-127.0.0.1 - - [04/Nov/2025 16:01:02] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [04/Nov/2025 16:01:05] "GET /api/map-data HTTP/1.1" 200 -
+127.0.0.1 - - [04/Nov/2025 16:05:12] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [04/Nov/2025 16:05:14] "GET /api/map-data HTTP/1.1" 200 -
+127.0.0.1 - - [04/Nov/2025 16:06:10] "POST /api/calculate-distance HTTP/1.1" 200 -
