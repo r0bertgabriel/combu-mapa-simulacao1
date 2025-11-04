@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Interativo OSM - Análise de Áreas</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f0f0;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        #map {
+            flex: 1;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 350px;
+            background: white;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        
+        .sidebar-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .sidebar-header h1 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        
+        .sidebar-header p {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .section {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .section h2 {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+        
+        .info-box strong {
+            color: #667eea;
+        }
+        
+        .point-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .point-item {
+            background: #f8f9fa;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .point-item h3 {
+            font-size: 1em;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .point-item p {
+            font-size: 0.85em;
+            color: #666;
+            margin: 2px 0;
+        }
+        
+        .point-item .actions {
+            display: flex;
+            gap: 5px;
+            margin-top: 8px;
+        }
+        
+        .point-item .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.85em;
+            flex: 1;
+        }
+        
+        .distance-result {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-weight: 500;
+        }
+        
+        .distance-result .distance-value {
+            font-size: 1.3em;
+            color: #0c4128;
+            margin-top: 5px;
+        }
+        
+        .alert {
+            padding: 12px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .coordinates-display {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        
+        .legend {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+        }
+        
+        .legend-color {
+            width: 30px;
+            height: 20px;
+            border-radius: 3px;
+            border: 1px solid #333;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-size: 0.95em;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .modal h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 350px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            z-index: 999;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 50vh;
+            }
+            
+            #map {
+                height: 50vh;
+            }
+            
+            .status-bar {
+                right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="map"></div>
+        
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>🗺️ Mapa Interativo</h1>
+                <p>Análise de Áreas - Região Filtrada</p>
+            </div>
+            
+            <div class="section">
+                <h2>📍 Adicionar Ponto</h2>
+                <div class="alert alert-info">
+                    <strong>Modo:</strong> <span id="mode-text">Clique no mapa para adicionar um ponto</span>
+                </div>
+                <button class="btn btn-primary" id="add-point-btn" onclick="toggleAddPointMode()">
+                    Ativar Modo de Adição
+                </button>
+                <button class="btn btn-danger" onclick="clearAllPoints()" style="margin-top: 5px;">
+                    Limpar Todos os Pontos
+                </button>
+            </div>
+            
+            <div class="section">
+                <h2>📏 Calcular Distância</h2>
+                <div class="info-box">
+                    Selecione dois pontos para calcular a distância entre eles.
+                </div>
+                <button class="btn btn-warning" id="calc-distance-btn" onclick="calculateDistanceBetweenPoints()" disabled>
+                    Calcular Distância
+                </button>
+                <button class="btn btn-danger" id="clear-distance-btn" onclick="clearDistance()" style="margin-top: 5px; display: none;">
+                    Limpar Cálculo
+                </button>
+                <div id="distance-result"></div>
+            </div>
+            
+            <div class="section">
+                <h2>📌 Pontos Adicionados (<span id="point-count">0</span>)</h2>
+                <div class="point-list" id="point-list">
+                    <p style="color: #999; text-align: center; padding: 20px;">
+                        Nenhum ponto adicionado ainda.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>💾 Exportar Dados</h2>
+                <button class="btn btn-success" onclick="exportPoints()">
+                    Exportar Pontos (JSON)
+                </button>
+                <button class="btn btn-success" onclick="exportPointsCSV()">
+                    Exportar Pontos (CSV)
+                </button>
+            </div>
+            
+            <div class="section">
+                <div class="legend">
+                    <h3 style="margin-bottom: 10px;">Legenda</h3>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: lightgreen; border-color: darkgreen;"></div>
+                        <span>Áreas/Polígonos</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #667eea;"></div>
+                        <span>Pontos Adicionados</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: red;"></div>
+                        <span>Bounding Box</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="status-bar">
+        <div>
+            <strong>Coordenadas:</strong> <span id="current-coords">Mova o mouse sobre o mapa</span>
+        </div>
+        <div>
+            <strong>Zoom:</strong> <span id="current-zoom">-</span>
+        </div>
+    </div>
+    
+    <!-- Modal para nomear ponto -->
+    <div class="modal-overlay" id="name-modal">
+        <div class="modal">
+            <h2>Nomear Ponto</h2>
+            <input type="text" id="point-name-input" placeholder="Digite o nome do ponto..." />
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                <button class="btn btn-primary" onclick="savePointWithName()">Salvar</button>
+                <button class="btn btn-danger" onclick="cancelPointName()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Variáveis globais
+        let map;
+        let addPointMode = false;
+        let points = [];
+        let pointMarkers = [];
+        let selectedPoints = [];
+        let tempLatLng = null;
+        let mapDataLayer;
+        let pointIdCounter = 1;
+        
+        // Inicializa o mapa
+        function initMap() {
+            // Cria o mapa centrado na área filtrada
+            const centerLat = (-1.52 + -1.47) / 2;
+            const centerLon = (-48.47 + -48.43) / 2;
+            
+            // Configurações de zoom suavizado
+            map = L.map('map', {
+                scrollWheelZoom: true,
+                wheelDebounceTime: 100,
+                wheelPxPerZoomLevel: 120,  // Aumentado de 60 (padrão) para 120 - zoom mais suave
+                zoomSnap: 0.25,  // Permite zoom em incrementos de 0.25
+                zoomDelta: 0.5,  // Cada ação de zoom muda 0.5 níveis
+                zoomAnimation: true,
+                zoomAnimationThreshold: 4
+            }).setView([centerLat, centerLon], 13);
+            
+            // Adiciona tile layer (OpenStreetMap)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+            
+            // Adiciona bounding box
+            const bbox = [
+                [-1.52, -48.47],
+                [-1.52, -48.43],
+                [-1.47, -48.43],
+                [-1.47, -48.47],
+                [-1.52, -48.47]
+            ];
+            
+            L.polyline(bbox, {
+                color: 'red',
+                weight: 2,
+                dashArray: '10, 10',
+                fillOpacity: 0
+            }).addTo(map);
+            
+            // Adiciona grade de coordenadas
+            addCoordinateGrid();
+            
+            // Carrega dados do mapa
+            loadMapData();
+            
+            // Event listeners
+            map.on('click', onMapClick);
+            map.on('mousemove', onMouseMove);
+            map.on('zoomend', updateZoomLevel);
+            
+            updateZoomLevel();
+        }
+        
+        function addCoordinateGrid() {
+            // Adiciona linhas de grade
+            const latLines = [-1.52, -1.50, -1.48, -1.47];
+            const lonLines = [-48.47, -48.45, -48.43];
+            
+            latLines.forEach(lat => {
+                L.polyline([
+                    [lat, -48.47],
+                    [lat, -48.43]
+                ], {
+                    color: 'gray',
+                    weight: 1,
+                    opacity: 0.3,
+                    dashArray: '5, 5'
+                }).addTo(map);
+                
+                // Label
+                L.marker([lat, -48.43], {
+                    icon: L.divIcon({
+                        className: 'coordinate-label',
+                        html: `<div style="background: white; padding: 2px 5px; font-size: 10px; border-radius: 3px;">${lat.toFixed(2)}</div>`,
+                        iconSize: [60, 20]
+                    })
+                }).addTo(map);
+            });
+            
+            lonLines.forEach(lon => {
+                L.polyline([
+                    [-1.52, lon],
+                    [-1.47, lon]
+                ], {
+                    color: 'gray',
+                    weight: 1,
+                    opacity: 0.3,
+                    dashArray: '5, 5'
+                }).addTo(map);
+                
+                // Label
+                L.marker([-1.47, lon], {
+                    icon: L.divIcon({
+                        className: 'coordinate-label',
+                        html: `<div style="background: white; padding: 2px 5px; font-size: 10px; border-radius: 3px;">${lon.toFixed(2)}</div>`,
+                        iconSize: [60, 20]
+                    })
+                }).addTo(map);
+            });
+        }
+        
+        async function loadMapData() {
+            try {
+                const response = await fetch('/api/map-data');
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    // Adiciona GeoJSON ao mapa
+                    mapDataLayer = L.geoJSON(result.data, {
+                        style: {
+                            fillColor: 'lightgreen',
+                            color: 'darkgreen',
+                            weight: 1.5,
+                            fillOpacity: 0.6
+                        },
+                        onEachFeature: function(feature, layer) {
+                            // Adiciona popup
+                            if (feature.properties) {
+                                let popupContent = '<strong>Propriedades:</strong><br>';
+                                for (let key in feature.properties) {
+                                    if (feature.properties[key] !== null) {
+                                        popupContent += `${key}: ${feature.properties[key]}<br>`;
+                                    }
+                                }
+                                layer.bindPopup(popupContent);
+                            }
+                            
+                            // Intercepta cliques no modo de adição
+                            layer.on('click', function(e) {
+                                if (addPointMode) {
+                                    // Impede que o popup abra
+                                    L.DomEvent.stopPropagation(e);
+                                    L.DomEvent.preventDefault(e);
+                                    
+                                    // Adiciona o ponto
+                                    tempLatLng = e.latlng;
+                                    showNameModal();
+                                }
+                                // Se não estiver em modo de adição, o popup abre normalmente
+                            });
+                            
+                            // Desabilita popup quando em modo de adição
+                            layer.on('popupopen', function(e) {
+                                if (addPointMode) {
+                                    layer.closePopup();
+                                }
+                            });
+                        }
+                    }).addTo(map);
+                    
+                    console.log('✅ Dados do mapa carregados com sucesso!');
+                } else {
+                    console.error('Erro ao carregar dados:', result.message);
+                }
+            } catch (error) {
+                console.error('Erro ao buscar dados do mapa:', error);
+            }
+        }
+        
+        function toggleAddPointMode() {
+            addPointMode = !addPointMode;
+            const btn = document.getElementById('add-point-btn');
+            const modeText = document.getElementById('mode-text');
+            
+            if (addPointMode) {
+                btn.textContent = 'Desativar Modo de Adição';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-success');
+                modeText.textContent = '✅ ATIVO - Clique no mapa para adicionar';
+                map.getContainer().style.cursor = 'crosshair';
+                console.log('✅ Modo de adição ATIVADO');
+            } else {
+                btn.textContent = 'Ativar Modo de Adição';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-primary');
+                modeText.textContent = 'Clique no mapa para adicionar um ponto';
+                map.getContainer().style.cursor = '';
+                console.log('❌ Modo de adição DESATIVADO');
+            }
+        }
+        
+        function onMapClick(e) {
+            console.log('🖱️ Clique no mapa detectado', {
+                addPointMode: addPointMode,
+                lat: e.latlng.lat,
+                lon: e.latlng.lng
+            });
+            
+            if (addPointMode) {
+                // Previne propagação para outros layers
+                L.DomEvent.stopPropagation(e);
+                tempLatLng = e.latlng;
+                console.log('📍 Abrindo modal para nomear ponto');
+                showNameModal();
+            }
+        }
+        
+        function showNameModal() {
+            const modal = document.getElementById('name-modal');
+            const input = document.getElementById('point-name-input');
+            modal.style.display = 'flex';
+            input.value = `Ponto ${pointIdCounter}`;
+            input.focus();
+            input.select();
+            console.log('📝 Modal aberto');
+        }
+        
+        function savePointWithName() {
+            const input = document.getElementById('point-name-input');
+            const name = input.value.trim() || `Ponto ${pointIdCounter}`;
+            
+            if (!tempLatLng) {
+                console.error('❌ Erro: tempLatLng é null');
+                alert('Erro: Coordenadas do ponto não encontradas. Tente novamente.');
+                cancelPointName();
+                return;
+            }
+            
+            console.log('💾 Salvando ponto:', name, tempLatLng);
+            addPoint(tempLatLng, name);
+            
+            document.getElementById('name-modal').style.display = 'none';
+            tempLatLng = null;
+        }
+        
+        function cancelPointName() {
+            document.getElementById('name-modal').style.display = 'none';
+            tempLatLng = null;
+        }
+        
+        function addPoint(latlng, name) {
+            if (!latlng || !latlng.lat || !latlng.lng) {
+                console.error('❌ Erro: coordenadas inválidas', latlng);
+                return;
+            }
+            
+            const point = {
+                id: pointIdCounter++,
+                name: name,
+                lat: latlng.lat,
+                lon: latlng.lng
+            };
+            
+            points.push(point);
+            console.log('✅ Ponto adicionado:', point);
+            
+            // Cria marcador
+            const marker = L.marker([point.lat, point.lon], {
+                icon: L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="background: #667eea; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${point.id}</div>`,
+                    iconSize: [30, 30]
+                })
+            }).addTo(map);
+            
+            marker.bindPopup(`
+                <strong>${point.name}</strong><br>
+                Lat: ${point.lat.toFixed(6)}<br>
+                Lon: ${point.lon.toFixed(6)}
+            `);
+            
+            marker.on('click', function(e) {
+                // Se estiver em modo de adição, não seleciona o ponto
+                if (!addPointMode) {
+                    selectPoint(point.id);
+                }
+                // Previne que o clique se propague e adicione outro ponto
+                L.DomEvent.stopPropagation(e);
+            });
+            
+            pointMarkers.push({ id: point.id, marker: marker });
+            
+            updatePointList();
+            updateDistanceButton();
+            
+            console.log(`📊 Total de pontos: ${points.length}`);
+        }
+        
+        function selectPoint(pointId) {
+            const index = selectedPoints.indexOf(pointId);
+            
+            if (index === -1) {
+                if (selectedPoints.length < 2) {
+                    selectedPoints.push(pointId);
+                    highlightSelectedPoint(pointId, true);
+                }
+            } else {
+                selectedPoints.splice(index, 1);
+                highlightSelectedPoint(pointId, false);
+            }
+            
+            updateDistanceButton();
+        }
+        
+        function highlightSelectedPoint(pointId, isSelected) {
+            const markerObj = pointMarkers.find(m => m.id === pointId);
+            if (markerObj) {
+                const icon = markerObj.marker.getIcon();
+                const color = isSelected ? '#ffc107' : '#667eea';
+                icon.options.html = `<div style="background: ${color}; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${pointId}</div>`;
+                markerObj.marker.setIcon(icon);
+            }
+            
+            // Atualiza UI
+            const pointItem = document.querySelector(`[data-point-id="${pointId}"]`);
+            if (pointItem) {
+                if (isSelected) {
+                    pointItem.style.borderLeftColor = '#ffc107';
+                    pointItem.style.background = '#fff3cd';
+                } else {
+                    pointItem.style.borderLeftColor = '#667eea';
+                    pointItem.style.background = '#f8f9fa';
+                }
+            }
+        }
+        
+        function updatePointList() {
+            const listEl = document.getElementById('point-list');
+            const countEl = document.getElementById('point-count');
+            
+            countEl.textContent = points.length;
+            
+            if (points.length === 0) {
+                listEl.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Nenhum ponto adicionado ainda.</p>';
+                return;
+            }
+            
+            listEl.innerHTML = points.map(point => `
+                <div class="point-item" data-point-id="${point.id}">
+                    <h3>📍 ${point.name}</h3>
+                    <p><strong>Lat:</strong> ${point.lat.toFixed(6)}</p>
+                    <p><strong>Lon:</strong> ${point.lon.toFixed(6)}</p>
+                    <div class="actions">
+                        <button class="btn btn-sm btn-primary" onclick="selectPoint(${point.id})">
+                            Selecionar
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deletePoint(${point.id})">
+                            Excluir
+                        </button>
+                        <button class="btn btn-sm btn-warning" onclick="zoomToPoint(${point.id})">
+                            Zoom
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function deletePoint(pointId) {
+            // Remove do array
+            points = points.filter(p => p.id !== pointId);
+            
+            // Remove marcador
+            const markerObj = pointMarkers.find(m => m.id === pointId);
+            if (markerObj) {
+                map.removeLayer(markerObj.marker);
+            }
+            pointMarkers = pointMarkers.filter(m => m.id !== pointId);
+            
+            // Remove da seleção
+            selectedPoints = selectedPoints.filter(id => id !== pointId);
+            
+            updatePointList();
+            updateDistanceButton();
+        }
+        
+        function zoomToPoint(pointId) {
+            const point = points.find(p => p.id === pointId);
+            if (point) {
+                map.setView([point.lat, point.lon], 16);
+                const markerObj = pointMarkers.find(m => m.id === pointId);
+                if (markerObj) {
+                    markerObj.marker.openPopup();
+                }
+            }
+        }
+        
+        function clearAllPoints() {
+            if (points.length === 0) return;
+            
+            if (confirm(`Deseja realmente remover todos os ${points.length} pontos?`)) {
+                pointMarkers.forEach(m => map.removeLayer(m.marker));
+                points = [];
+                pointMarkers = [];
+                selectedPoints = [];
+                updatePointList();
+                updateDistanceButton();
+                document.getElementById('distance-result').innerHTML = '';
+            }
+        }
+        
+        function updateDistanceButton() {
+            const btn = document.getElementById('calc-distance-btn');
+            btn.disabled = selectedPoints.length !== 2;
+        }
+        
+        async function calculateDistanceBetweenPoints() {
+            if (selectedPoints.length !== 2) return;
+            
+            const point1 = points.find(p => p.id === selectedPoints[0]);
+            const point2 = points.find(p => p.id === selectedPoints[1]);
+            
+            try {
+                const response = await fetch('/api/calculate-distance', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        lat1: point1.lat,
+                        lon1: point1.lon,
+                        lat2: point2.lat,
+                        lon2: point2.lon
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    const resultEl = document.getElementById('distance-result');
+                    resultEl.innerHTML = `
+                        <div class="distance-result">
+                            <strong>Distância entre:</strong><br>
+                            📍 ${point1.name} ↔ 📍 ${point2.name}
+                            <div class="distance-value">
+                                ${result.distance_meters} metros<br>
+                                (${result.distance_km} km)
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Desenha linha entre os pontos
+                    if (window.distanceLine) {
+                        map.removeLayer(window.distanceLine);
+                    }
+                    
+                    window.distanceLine = L.polyline([
+                        [point1.lat, point1.lon],
+                        [point2.lat, point2.lon]
+                    ], {
+                        color: '#dc3545',
+                        weight: 3,
+                        dashArray: '10, 10'
+                    }).addTo(map);
+                    
+                    // Ajusta zoom para mostrar ambos os pontos
+                    const bounds = L.latLngBounds([
+                        [point1.lat, point1.lon],
+                        [point2.lat, point2.lon]
+                    ]);
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                    
+                    // Mostra botão para limpar cálculo
+                    document.getElementById('clear-distance-btn').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Erro ao calcular distância:', error);
+                alert('Erro ao calcular distância. Verifique o console.');
+            }
+        }
+        
+        function clearDistance() {
+            // Remove a linha de distância do mapa
+            if (window.distanceLine) {
+                map.removeLayer(window.distanceLine);
+                window.distanceLine = null;
+            }
+            
+            // Limpa o resultado
+            document.getElementById('distance-result').innerHTML = '';
+            
+            // Esconde o botão de limpar
+            document.getElementById('clear-distance-btn').style.display = 'none';
+            
+            // Desmarca os pontos selecionados
+            selectedPoints.forEach(pointId => {
+                highlightSelectedPoint(pointId, false);
+            });
+            selectedPoints = [];
+            
+            // Atualiza o botão de calcular
+            updateDistanceButton();
+            
+            console.log('🧹 Cálculo de distância limpo');
+        }
+        
+        function exportPoints() {
+            if (points.length === 0) {
+                alert('Nenhum ponto para exportar!');
+                return;
+            }
+            
+            const data = {
+                export_date: new Date().toISOString(),
+                total_points: points.length,
+                points: points
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pontos_mapa_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function exportPointsCSV() {
+            if (points.length === 0) {
+                alert('Nenhum ponto para exportar!');
+                return;
+            }
+            
+            let csv = 'ID,Nome,Latitude,Longitude\n';
+            points.forEach(point => {
+                csv += `${point.id},"${point.name}",${point.lat},${point.lon}\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pontos_mapa_${Date.now()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function onMouseMove(e) {
+            document.getElementById('current-coords').textContent = 
+                `Lat: ${e.latlng.lat.toFixed(6)}, Lon: ${e.latlng.lng.toFixed(6)}`;
+        }
+        
+        function updateZoomLevel() {
+            document.getElementById('current-zoom').textContent = map.getZoom();
+        }
+        
+        // Inicializa quando o DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+        });
+        
+        // Atalhos de teclado
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (addPointMode) {
+                    toggleAddPointMode();
+                }
+                cancelPointName();
+            } else if (e.key === 'Enter' && document.getElementById('name-modal').style.display === 'flex') {
+                savePointWithName();
+            }
+        });
+    </script>
+</body>
+</html>
